@@ -31,6 +31,15 @@ test('Parses attributes (with or without a given value)', function(t) {
     t.equal(render(d('input[name=asdf]')), '<input name="asdf">')
     t.equal(render(d('select[multiple]')), '<select multiple></select>')
 
+    // Can include various url characters as attribute values
+    t.equal(render(d('a[href=google.com?foo=bar]')), '<a href="google.com?foo=bar"></a>')
+
+    // More involved test case from issue #6
+    // Note that renderToStaticMarkup() will encode '&' characters
+    var testUrl = 'https://maps.googleapis.com/maps/api/staticmap?center=San+Francisco,CA&zoom=10&size=400x400'
+    var encodedUrl = testUrl.replace(/&/g, '&amp;')
+    t.equal(render(d('a[href=' + testUrl + ']')), '<a href="' + encodedUrl + '"></a>')
+
     // Some attribute types allow values that include spaces:
     t.equal(render(d('input[placeholder=s p a c e]')), '<input placeholder="s p a c e">')
 
@@ -67,6 +76,12 @@ test('Combines parsed props and values from the props hash', function(t) {
 
     // Classes should be combined from both sources:
     t.equal(render(d('div.foo', { className: 'bar' })), '<div class="foo bar"></div>')
+    t.equal(render(d('div', { className: 'foo' })), '<div class="foo"></div>')
+    t.equal(render(d('div.foo', {})), '<div class="foo"></div>')
+
+    // Edge cases for class combinations:
+    t.equal(render(d('div.foo', { className: '' })), '<div class="foo "></div>')
+    t.equal(render(d('div.foo', { className: null })), '<div class="foo"></div>')
     t.end()
 })
 
@@ -82,6 +97,17 @@ test('button elements have default type="button"', function(t) {
     t.end()
 });
 
+test('Data attributes get passed through as expected', function(t) {
+    t.equal(render(d('div', {'data-foo': 'bar'}, 'hi')), '<div data-foo="bar">hi</div>')
+
+    var dataHash = {'data-foo': 'bar', 'data-baz': 'boo'}
+    t.equal(render(d('div', dataHash, 'hi')), '<div data-foo="bar" data-baz="boo">hi</div>')
+
+    t.equal(render(d('div[data-foo=bar]', 'hi')), '<div data-foo="bar">hi</div>')
+    t.equal(render(d('div[data-a=1][data-b=2]', 'hi')), '<div data-a="1" data-b="2">hi</div>')
+    t.end()
+});
+
 test('invalid input throws ParseError exceptions', function(t) {
     var errRegex = new RegExp(d.ParseError.prototype.name)
     t.throws(function() { d('-invalid') }, errRegex)
@@ -90,5 +116,6 @@ test('invalid input throws ParseError exceptions', function(t) {
     t.throws(function() { d(null) }, errRegex)
     t.throws(function() { d(false) }, errRegex)
     t.throws(function() { d(14) }, errRegex)
+    t.throws(function() { d('div.too-many-args', 'asdf', 'asdf', 'asdf') }, /Too many jsnox args/)
     t.end()
 });
